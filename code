@@ -1,6 +1,1 @@
-#imports
-import tkinter as tk #inicia todo
-from PIL import Image, ImageTk #para poder utilizar imagenes en el juego
-from tkinter import messagebox 
-import winsound
-ARCHIVO_PUNTAJES = "puntajes.txt" 
+
