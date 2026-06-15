@@ -3,7 +3,7 @@ import tkinter as tk
 from PIL import Image, ImageTk #para poder utilizar imagenes en el juego
 from tkinter import messagebox 
 
-
+#bffrferj
 
 #Constantes
 TAM = 40 # tam del pixel 
