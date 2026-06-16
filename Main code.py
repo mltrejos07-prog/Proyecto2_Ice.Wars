@@ -29,7 +29,7 @@ def menu_principal(): #fondo del menu
     ventana.title("menu")
     ventana.geometry("600x400")
 
-    img = Image.open("menu.png")
+    img = Image.open("obj/menu.png")
     img = img.resize((600, 400))
 
     img_tk = ImageTk.PhotoImage(img)
