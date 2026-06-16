@@ -7,7 +7,6 @@ from tkinter import messagebox
 #Constantes
 TAM = 40 # tam del pixel 
 
-
 matriz = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -20,11 +19,9 @@ matriz = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]         
 ]   
+
 FILAS =len(matriz)
 COLUMNAS = len(matriz[0])
-
-
-
 
 
 #Funciones
@@ -37,14 +34,79 @@ def menu_principal(): #fondo del menu
 
     img_tk = ImageTk.PhotoImage(img)
 
-    label = tk.Label(ventana, image=img_tk)
-    label.image = img_tk  # importante
-    label.pack()
+    fondo = tk.Label(ventana, image=img_tk)
+    fondo.image = img_tk
+    fondo.place(x=0, y=0)
+    
+    boton_jugar = tk.Button(ventana, text="Jugar", command=abrir_jugar)
+    boton_jugar.place(x=260, y=210)
+    
+    boton_top = tk.Button(ventana, text="Top de Jugadores")
+    boton_top.place(x=235, y=260)
+    
+    boton_musica = tk.Button(ventana, text="Música")
+    boton_musica.place(x=260, y=310)
 
 #botones del menu
-    
-    
+def abrir_jugar():
+    ventana_jugar = tk.Toplevel(ventana) #ventana principal
+    ventana_jugar.title("Inicio de Sesión")
+    ventana_jugar.geometry("1000x600")
 
+    img = Image.open("obj/session.png")   #fondo 
+    img = img.resize((1000, 600))
+    img_tk =ImageTk.PhotoImage(img)
+    fondo = tk.Label(ventana_jugar, image=img_tk)
+    fondo.image = img_tk
+    fondo.place(x=0, y=0)
+    
+    faccion_atacante = tk.StringVar()    #variables 
+    faccion_defensor = tk.StringVar()
+  
+#facciones del atacante 
+    nombre_a  = tk.Entry(ventana_jugar)
+    nombre_a.place(x=220, y=200)
+    contra_a = tk.Entry(ventana_jugar, show="*") #Para que la contra no sea revelada 
+    contra_a.place(x=220, y=250)
+    tk.Radiobutton( ventana_jugar, text="Frutas", variable=faccion_atacante, value="Frutas").place(x=95, y=350)
+    tk.Radiobutton( ventana_jugar, text="Helados", variable=faccion_atacante, value="Helados").place(x=95, y=375)
+    tk.Radiobutton( ventana_jugar, text="Fantasmas", variable=faccion_atacante, value="Fantasmas").place(x=95, y=395)
+
+#facciones del defensor
+    nombre_d  = tk.Entry(ventana_jugar)
+    nombre_d.place(x=720, y=200)
+    contra_d = tk.Entry(ventana_jugar, show="*") 
+    contra_d.place(x=720, y=250)
+    tk.Radiobutton( ventana_jugar, text="Frutas", variable=faccion_defensor, value="Frutas").place(x=575, y=325)
+    tk.Radiobutton( ventana_jugar, text="Helados", variable=faccion_defensor, value="Helados").place(x=575, y=350)
+    tk.Radiobutton( ventana_jugar, text="Fantasmas", variable=faccion_defensor, value="Fantasmas").place(x=575, y=375)  
+
+#boton de "comenzar"
+    def comenzar():
+        if nombre_a.get() == "":
+            messagebox.showerror("ERROR", "Ingrese el nombre del atacante")
+            return
+        if nombre_d.get() == "":
+            messagebox.showerror("ERROR", "Ingrese el nombre del defensor")
+            return  
+        if faccion_atacante.get() == faccion_defensor.get(): 
+            messagebox.showerror("Error", "Las facciones deben ser diferentes") 
+            return 
+     
+        abrir_editor_mapa()
+    tk.Button(ventana_jugar, text="COMENZAR", command=comenzar).place(x=450, y=500)   
+def abrir_editor_mapa():
+    editor = tk.Toplevel(ventana)
+    editor.title("Editor de Mapa")
+    editor.geometry("1000x700")
+    tk.Label(editor, text="EDITOR DE MAPA").pack(pady=20)      
+
+
+def abrir_top():
+    ventana_top = tk.Toplevel(ventana)
+    ventana_top.title("Top de jugadores")
+    ventana_top.geometry("600x400")
+    tk.Label(ventana_top, text= "Ranking de Jugaores").pack(pady=20)
 
 #Ventana Principal 
 
@@ -52,4 +114,3 @@ ventana = tk.Tk()
 menu_principal()
 
 ventana.mainloop()
-#prueba de commit
