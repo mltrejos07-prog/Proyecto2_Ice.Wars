@@ -141,7 +141,7 @@ def abrir_jugar():
 def abrir_editor_mapa():
     editor = tk.Toplevel(ventana)
     editor.title("Editor de Mapa")
-    editor.geometry("1000x850")
+    editor.geometry("1000x800")
     tk.Label(editor, text="EDITOR DE MAPA").pack()
 
    
