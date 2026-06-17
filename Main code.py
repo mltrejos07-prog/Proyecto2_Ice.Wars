@@ -5,7 +5,7 @@ from tkinter import messagebox
 
 
 #Constantes
-TAM = 40 # tam del pixel 
+TAM = 75 # tam del pixel 
 
 matriz = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  
@@ -17,7 +17,9 @@ matriz = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]         
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ]   
 
 FILAS =len(matriz)
@@ -99,8 +101,33 @@ def abrir_editor_mapa():
     editor = tk.Toplevel(ventana)
     editor.title("Editor de Mapa")
     editor.geometry("1000x700")
-    tk.Label(editor, text="EDITOR DE MAPA").pack(pady=20)      
+    
+# Canvas donde se dibuja el mapa
+    canvas = tk.Canvas(
+        editor,
+        width=COLUMNAS * TAM,
+        height=FILAS * TAM,
+        bg="lightblue")
 
+    canvas.pack(pady=20)
+
+    # Dibujar el mapa
+    for fila in range(FILAS):
+
+        for col in range(COLUMNAS):
+
+            x1 = col * TAM
+            y1 = fila * TAM
+
+            x2 = x1 + TAM
+            y2 = y1 + TAM
+
+            canvas.create_rectangle(
+                x1,
+                y1,
+                x2,
+                y2,
+                outline="black")  
 
 def abrir_top():
     ventana_top = tk.Toplevel(ventana)
