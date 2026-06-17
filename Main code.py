@@ -6,7 +6,7 @@ from pygame import mixer
 
 #musica de fondo
 mixer.init()
-mixer.music.load("obj/musica.mp3")
+mixer.music.load("obj/music.mp3")
 mixer.music.play(-1)
 
 #Constantes
