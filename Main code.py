@@ -6,6 +6,7 @@ from pygame import mixer
 
 #musica de fondo
 mixer.init()
+musica_activa = True
 mixer.music.load("obj/music.mp3")
 mixer.music.play(-1)
 
@@ -33,6 +34,15 @@ jugador2 = {}
 FILAS =len(matriz)
 COLUMNAS = len(matriz[0])
 
+#funcion para hacer que el volumen se pause y se reanude
+def control_musica():
+    global musica_activa
+    if musica_activa:
+        mixer.music.pause()
+        musica_activa = False
+    else:
+        mixer.music.unpause()
+        musica_activa = True
 
 #Funciones
 def menu_principal(): #fondo del menu
@@ -54,7 +64,7 @@ def menu_principal(): #fondo del menu
     boton_top = tk.Button(ventana, text="Top de Jugadores")
     boton_top.place(x=235, y=260)
     
-    boton_musica = tk.Button(ventana, text="Música")
+    boton_musica = tk.Button(ventana, text="Música", command=control_musica)
     boton_musica.place(x=260, y=310)
 
 #botones del menu
