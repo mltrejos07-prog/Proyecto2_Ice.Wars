@@ -6,6 +6,7 @@ from pygame import mixer
 
 #musica de fondo
 mixer.init()
+musica_activa = True
 mixer.music.load("obj/music.mp3")
 mixer.music.play(-1)
 
@@ -31,19 +32,20 @@ jugador2 = {}
 
 FILAS =len(matriz)
 COLUMNAS = len(matriz[0])
-COL_BASE = COLUMNAS-1
+COL_BASE = 0
+MITAD = COLUMNAS //2
 
 FACCIONES = {
     "Esqueleto": {
-        "soladado":{
-            "nombre":"Soldado Esqueeto",
+        "soldado":{
+            "nombre":"Soldado Esqueleto",
             "vida": 80, "daño": 15, "velocidad": 2,
             "costo": 50,
             "habilidad": "Ataque doble (3 turnos)"},
         "torre": {
             "nombre": "Torre Esqueleto",
             "vida": 150, "daño": 25, "alcance": 3,
-            "costo": 100,
+            "costo": 55,
             "habilidad": "Disparo en área (5 turnos)"},
         "muro":{
             "nombre": "Muro Esqueleto",
@@ -57,13 +59,13 @@ FACCIONES = {
             "nombre": "Soldado Fantasma",
             "vida": 60, "daño": 20, "velocidad": 3,
             "costo": 60,
-            "habilidad": "Escudo temporal (c/4 turnos)"
+            "habilidad": "Escudo temporal (4 turnos)"
         },
         "torre": {
             "nombre": "Torre Fantasma",
             "vida": 120, "daño": 20, "alcance": 4,
-            "costo": 90,
-            "habilidad": "Ralentiza enemigos (c/4 turnos)"
+            "costo": 70,
+            "habilidad": "Ralentiza enemigos (4 turnos)"
         },
         "muro": {
             "nombre": "Muro Fantasma",
@@ -82,7 +84,7 @@ FACCIONES = {
         "torre": {
             "nombre": "Torre Helada",
             "vida": 180, "daño": 15, "alcance": 3,
-            "costo": 110,
+            "costo": 50,
             "habilidad": "Congela unidad 2 turnos (c/5 turnos)"
         },
         "muro": {
@@ -93,6 +95,15 @@ FACCIONES = {
         },
     },
 }
+#funcion para hacer que el volumen se pause y se reanude
+def control_musica():
+    global musica_activa
+    if musica_activa:
+        mixer.music.pause()
+        musica_activa = False
+    else:
+        mixer.music.unpause()
+        musica_activa = True
 
 #color
 COLOR_FONDO       = "#1a1a2e"
@@ -173,7 +184,7 @@ def crear_panel(parent, faccion, dinero_var, rol, seleccion_var):
     }
     sufijo = sufijo_faccion.get(faccion, faccion.lower())
     
-    for tipo, icono, ruta_base in tipos:
+    for tipo, ruta_base in tipos:
         datos = stats[tipo]
         ruta_img = f"{ruta_base}_{sufijo}.png"
 
@@ -190,7 +201,7 @@ def crear_panel(parent, faccion, dinero_var, rol, seleccion_var):
             lbl_img.image = img_tk
             lbl_img.pack(side="left", padx=(0, 6))
 
-        tk.Label(fila_top, text=f"{icono} {datos['nombre']}", bg=COLOR_TARJETA, fg=COLOR_TEXTO, font=FUENTE_UNIDAD, wraplength=130, justify="left").pack(side="left")
+        tk.Label(fila_top, text=f"{datos['nombre']}", bg=COLOR_TARJETA, fg=COLOR_TEXTO, font=FUENTE_UNIDAD, wraplength=130, justify="left").pack(side="left")
         #Stats
         lineas_stats = []
         if tipo == "soldado":
@@ -215,7 +226,6 @@ def crear_panel(parent, faccion, dinero_var, rol, seleccion_var):
         # Botón colocar
         def hacer_seleccionar(t=tipo):
             seleccion_var.set(t)
-            messagebox.showinfo("Unidad seleccionada", f"Haz clic en el mapa para colocar: {t}")
 
         btn = boton_colocar(tarjeta, f"Colocar {tipo}", hacer_seleccionar)
         btn.pack(pady=(4, 2))
@@ -235,6 +245,9 @@ def abrir_editor_mapa():
     dinero_ata = tk.StringVar(value="$100")
     seleccion_def = tk.StringVar(value="")
     seleccion_ata = tk.StringVar(value="")
+    dinero_def_int = [100]
+    dinero_ata_int = [100]
+    fase_actual = tk.StringVar(value="defensor")
 
     faccion_def = jugador2.get("facción", "Esqueleto")
     faccion_ata = jugador1.get("facción", "Fantasma")
@@ -260,6 +273,17 @@ def abrir_editor_mapa():
     tk.Label(frame_ronda, textvariable=victorias_ata, bg=COLOR_RONDA, fg=COLOR_TEXTO, font=FUENTE_RONDA, width=2).pack(side="left")
     tk.Label(frame_ronda, text="Atacante", bg=COLOR_RONDA, fg=COLOR_TEXTO, font=("Segoe UI", 12), padx=6).pack(side="left")
     
+    lbl_fase = tk.Label(centro, bg=COLOR_FONDO, fg=COLOR_DINERO, font=("Segoe UI", 10, "bold"))
+    lbl_fase.pack(pady=(0, 2))
+
+    def actualizar_lbl_fase(*_):
+        if fase_actual.get() == "defensor":
+            lbl_fase.config(text="Turno del DEFENSOR — colocá tus defensas")
+        else:
+            lbl_fase.config(text="Turno del ATACANTE — colocá tus unidades")
+    fase_actual.trace_add("write", actualizar_lbl_fase)
+    actualizar_lbl_fase()
+    
     canvas = tk.Canvas(centro, width=COLUMNAS * TAM, height=FILAS * TAM, bg=COLOR_CANVAS_BG, 
         highlightthickness=2, highlightbackground=COLOR_BORDE
     )
@@ -269,13 +293,17 @@ def abrir_editor_mapa():
         for col in range(COLUMNAS):
             x1, y1 = col * TAM, fila * TAM
             x2, y2 = x1 + TAM, y1 + TAM
-            if col == 0:
-                relleno = "#1f2a4a"
-            elif col == COL_BASE:
+            if col == COL_BASE:
                 relleno = "#1f3a2a"
+            elif col < MITAD:
+                relleno = "#1f2a4a"
+            elif col == MITAD:
+                relleno = "#0d1a2e"
             else:
                 relleno = COLOR_CANVAS_BG
-            canvas.create_rectangle(x1, y1, x2, y2, fill=relleno, outline="#2a4a7f")
+            canvas.create_line(MITAD * TAM, 0, MITAD * TAM, FILAS * TAM, fill=COLOR_BORDE, width=2, dash=(6, 4))
+            
+            #canvas.create_rectangle(x1, y1, x2, y2, fill=relleno, outline="#2a4a7f")
 
     #base central del juego
     fila_base = FILAS // 2
@@ -296,20 +324,26 @@ def abrir_editor_mapa():
             return
         if col == COL_BASE and fila == fila_base:
             return
-        matriz[fila][col] = 1
-        x1, y1 = col * TAM, fila * TAM
-        x2, y2 = x1 + TAM, y1 + TAM
-        canvas.create_rectangle(x1, y1, x2, y2, fill="#374a6e", outline="#2a4a7f")
-    canvas.bind("<Button-1>", click)
 
-    ancho_total = 200 + COLUMNAS * TAM + 200
-    alto_total  = FILAS * TAM + 120
-    editor.geometry(f"{ancho_total}x{alto_total}")
+        fase = fase_actual.get()
+        imagenes_sufijo = {"Esqueleto": "esqueleto", "Fantasma": "ghost", "Helado": "helado"}
+
+        if fase == "defensor":
+            if col == COL_BASE or col >= MITAD:
+                return
+            tipo = seleccion_def.get()
+            if not tipo:
+                return
+            costo = FACCIONES[faccion_def][tipo]["costo"]
+            if dinero_def_int[0] < costo:
+                messagebox.showwarning("Sin dinero", f"No tenés ${costo} para colocar {tipo}")
+                return
+            dinero_def_int[0] -= costo
+            dinero_def.set(f"${dinero_def_int[0]}")
     
 def menu_principal():
-    ventana.title("Defensa y Asalto de Base")
+    ventana.title("juegooool")
     ventana.geometry("600x400")
-
     try:
         img = Image.open("obj/menu.png").resize((600, 400))
         img_tk = ImageTk.PhotoImage(img)
@@ -320,8 +354,13 @@ def menu_principal():
         ventana.configure(bg=COLOR_FONDO)
 
     tk.Button(ventana, text="Jugar", command=abrir_jugar).place(x=260, y=210)
-    tk.Button(ventana, text="Top de Jugadores", command=abrir_top).place(x=235, y=260)
-    tk.Button(ventana, text="Música")
+    tk.Button(ventana, text="Top de Jugadores", command=abrir_top).place(x=235, y=260)    
+    img_tk = ImageTk.PhotoImage(img)
+    
+    boton_musica = tk.Button(ventana, text="Música", command=control_musica)
+    boton_musica.place(x=260, y=310)
+
+#botones del menu
 def abrir_jugar():
     ventana_jugar = tk.Toplevel(ventana)
     ventana_jugar.title("Inicio de Sesión")
@@ -371,7 +410,6 @@ def abrir_jugar():
         jugador2.update({"nombre": nombre_d.get(), "contraseña": contra_d.get(), "facción": faccion_defensor.get()})
         ventana_jugar.destroy()
         abrir_editor_mapa()
-
     tk.Button(ventana_jugar, text="COMENZAR", command=comenzar).place(x=450, y=500)
 
 def abrir_top():
