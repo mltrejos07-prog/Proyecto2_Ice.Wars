@@ -544,28 +544,73 @@ def abrir_editor_mapa():
                 obj.imagen_id = item_id
                 lista_defensas.append(obj)
                 matriz[f][c] = 1
-
-        def fin_ronda(ganador):
-            if ganador == "atacante":
-                victorias_ata.set(victorias_ata.get() + 1)
-                messagebox.showinfo("Fin de ronda", "El ATACANTE destruyo la base y gana la ronda")
-            else:
-                victorias_def.set(victorias_def.get() + 1)
-                messagebox.showinfo("Fin de ronda", "El DEFENSOR elimino todas las unidades y gana la ronda")
-
-            #verificacion si alguien gano 3 rondas
-            if victorias_ata.get() == 3:
-                messagebox.showinfo("Fin del juego", f"{jugador1['nombre']} gana la partida")
-                editor.destroy()
-            elif victorias_def.get() == 3:
-                messagebox.showinfo("Fin del juego", f"{jugador2['nombre']} gana la partida")
-                editor.destroy()
-
         ronda = Ronda(lista_unidades, lista_defensas, canvas, matriz, fila_base, COL_BASE, fin_ronda, TAM)
         print("Unidades:", len(lista_unidades))
         print("Defensas:", len(lista_defensas))
         ronda.iniciar()
-        ronda.iniciar()
+
+    def fin_ronda(ganador):
+        if ganador == "atacante":
+            victorias_ata.set(victorias_ata.get() + 1)
+            messagebox.showinfo("Fin de ronda", "El ATACANTE gana la ronda")
+        else:
+            victorias_def.set(victorias_def.get() + 1)
+            messagebox.showinfo("Fin de ronda", "El DEFENSOR gana la ronda")
+
+        if victorias_ata.get() == 3:
+            messagebox.showinfo("Fin del juego", f"{jugador1['nombre']} gana la partida")
+            editor.destroy()
+            return
+        elif victorias_def.get() == 3:
+            messagebox.showinfo("Fin del juego", f"{jugador2['nombre']} gana la partida")
+            editor.destroy()
+            return
+
+        # Sumar dinero para la siguiente ronda
+        dinero_def_int[0] += 100
+        dinero_ata_int[0] += 100
+        dinero_def.set(f"${dinero_def_int[0]}")
+        dinero_ata.set(f"${dinero_ata_int[0]}")
+        ronda_actual.set(ronda_actual.get() + 1)
+
+        # Limpiar mapa
+        for f in range(FILAS):
+            for c in range(COLUMNAS):
+                matriz[f][c] = 0
+        canvas.delete("all")
+
+        # Redibujar cuadricula
+        for f in range(FILAS):
+            for c in range(COLUMNAS):
+                x1, y1 = c * TAM, f * TAM
+                x2, y2 = x1 + TAM, y1 + TAM
+                if c == COL_BASE:
+                    relleno = "#1f3a2a"
+                elif c < MITAD:
+                    relleno = "#1f2a4a"
+                elif c == MITAD:
+                    relleno = "#0d1a2e"
+                else:
+                    relleno = COLOR_CANVAS_BG
+                canvas.create_rectangle(x1, y1, x2, y2, fill=relleno, outline="#2a4a7f")
+        canvas.create_line(MITAD * TAM, 0, MITAD * TAM, FILAS * TAM, fill=COLOR_BORDE, width=2, dash=(6, 4))
+
+        # Redibujar base
+        if img_base:
+            canvas.create_image(COL_BASE * TAM + TAM // 2, fila_base * TAM + TAM // 2, image=img_base, anchor="center")
+        canvas.create_text(COL_BASE * TAM + TAM // 2, fila_base * TAM + TAM - 8, text="BASE", fill=COLOR_DINERO, font=("Segoe UI", 7, "bold"))
+
+        # Limpiar diccionarios y resetear fase
+        info_canvas.clear()
+        imagenes_canvas.clear()
+        fase_actual.set("defensor")
+        btn_listo.config(state="normal")
+        btn_combate.config(state="disabled")
+
+    #ronda = Ronda(lista_unidades, lista_defensas, canvas, matriz, fila_base, COL_BASE, fin_ronda, TAM)
+    #print("Unidades:", len(lista_unidades))
+    #print("Defensas:", len(lista_defensas))
+    #ronda.iniciar()
 
     btn_listo = tk.Button(frame_botones, text="Defensor listo", command=defensor_listo, bg="#2ecc71", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=12, pady=6, cursor="hand2")
     btn_listo.pack(side="left", padx=10)
