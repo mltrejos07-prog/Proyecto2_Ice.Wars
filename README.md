@@ -16,15 +16,11 @@ El primero en ganar 3 rondas gana la partida.
 3. Ejecutá el archivo principal: "python "Main code.py"
 
 # Estructura del proyecto
--"Main code.py": archivo principal
--"obj/":carpeta con imágenes y música
--"Jugadores.json": se crea automáticamente al registrar jugadores
+-"Main code.py": archivo principal, "obj/":carpeta con imágenes y música, "Jugadores.json": se crea automáticamente al registrar jugadores
 
 # Controles
--Clic en el mapa para colocar unidades o defensas
--Panel izquierdo: defensor
--Panel derecho: atacante
+-Clic en el mapa para colocar unidades o defensas, paneles izquierdo: defensor y atacante
 
 # Integrantes
-"Maria Laura Trejos Rivera"
+"Maria Laura Trejos Rivera" - 
 "Eykon Quiros Rowe"
