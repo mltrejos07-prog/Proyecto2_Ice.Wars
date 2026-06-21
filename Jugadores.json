@@ -1,0 +1,22 @@
+{
+    "a": {
+        "contrasena": "s",
+        "victorias_atacante": 0,
+        "victorias_defensor": 0
+    },
+    "ef": {
+        "contrasena": "f",
+        "victorias_atacante": 0,
+        "victorias_defensor": 1
+    },
+    "ice": {
+        "contrasena": "ice",
+        "victorias_atacante": 0,
+        "victorias_defensor": 0
+    },
+    "wars": {
+        "contrasena": "wars",
+        "victorias_atacante": 0,
+        "victorias_defensor": 0
+    }
+}

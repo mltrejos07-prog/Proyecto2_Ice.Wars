@@ -3,6 +3,8 @@ import tkinter as tk
 from PIL import Image, ImageTk #para poder utilizar imagenes en el juego
 from tkinter import messagebox
 from pygame import mixer
+import json
+import os
 
 mixer.init() #musica de fondo
 musica_activa = True
@@ -94,6 +96,7 @@ FACCIONES = {
         },
     },
 }
+ARCHIVO_JUGADORES ="Jugadores.json" 
 
 class Unidad:
     def __init__(self, tipo, faccion, fila, col):
@@ -154,17 +157,21 @@ class Defensa:
             self.vida = 0
 
 class Ronda:
-    def __init__(self, unidades, defensas, canvas, matriz, fila_base, col_base, callback_fin, tam):
-        self.unidades = unidades    # lista de objetos Unidad
-        self.defensas = defensas    # lista de objetos Defensa
+    def __init__(self, unidades, defensas, canvas, matriz, fila_base, col_base, callback_fin, tam, dinero_def_int, dinero_ata_int, dinero_def, dinero_ata):
+        self.unidades = unidades
+        self.defensas = defensas
         self.canvas = canvas
         self.matriz = matriz
         self.fila_base = fila_base
         self.col_base = col_base
-        self.callback_fin = callback_fin  # funcion a llamar al terminar
+        self.callback_fin = callback_fin
         self.tam = tam
         self.activa = False
         self.turno = 0
+        self.dinero_def_int = dinero_def_int  
+        self.dinero_ata_int = dinero_ata_int  
+        self.dinero_def = dinero_def        
+        self.dinero_ata = dinero_ata          
 
     def iniciar(self):
         self.activa = True
@@ -174,13 +181,16 @@ class Ronda:
             return
         self.turno += 1
 
-        # Mover y atacar cada unidad
+        #Mueve y ataca cada unidad
         for u in list(self.unidades):
             if not u.esta_viva():
                 continue
             if u.congelada > 0:
                 u.congelada -= 1
                 continue
+            u.turno_hab += 1
+            self._activar_habilidad_unidad(u)
+            col_destino = u.col - 1
             col_destino = u.col - 1  # avanza hacia la izquierda
 
             # Llego a la base
@@ -205,13 +215,79 @@ class Ronda:
                 objetivo = self._buscar_defensa(u.fila, col_destino)
                 if objetivo:
                     objetivo.recibir_daño(u.daño)
+                    # Atacante gana dinero por dañar
+                    if objetivo.tipo == "torre":
+                        self.dinero_ata_int[0] += 3
+                        self.dinero_ata.set(f"${self.dinero_ata_int[0]}")
                     if not objetivo.esta_en_pie():
+                        # Atacante gana extra por destruir
+                        self.dinero_ata_int[0] += FACCIONES[objetivo.faccion][objetivo.tipo]["costo"]
+                        self.dinero_ata.set(f"${self.dinero_ata_int[0]}")
                         self._eliminar_defensa(objetivo)
+        # Torres atacan a las unidades enemigas
+        for d in list(self.defensas):
+            if d.tipo != "torre":
+                continue
+            if not d.esta_en_pie():
+                continue
+            d.turno_hab += 1
+            objetivo_encontrado = None
+            for u in list(self.unidades):
+                if not u.esta_viva():
+                    continue
+                distancia = abs(u.col - d.col) + abs(u.fila - d.fila)
+                if distancia <= d.alcance:
+                    objetivo_encontrado = u  # ← guardar la unidad atacada
+                    u.recibir_daño(d.daño)
+                    if not u.esta_viva():
+                        self.eliminar_unidad(u)
+                    break
+            self._activar_habilidad_torre(d, objetivo_encontrado)  # ← llamar habilidad
+        
         # Verificar condicion de victoria
         self._verificar_victoria()
         if self.activa:
             self.canvas.after(3000, self._tick)
 
+    def _activar_habilidad_unidad(self, u):
+        if u.faccion == "Esqueleto":
+            # Ataque doble cada 3 turnos: su daño se duplica ese turno
+            if u.turno_hab % 3 == 0:
+                u.daño *= 2
+                self.canvas.after(100, lambda: setattr(u, 'daño', u.daño // 2))
+
+        elif u.faccion == "Fantasma":
+            # Escudo temporal cada 4 turnos
+            if u.turno_hab % 4 == 0:
+                u.escudo = True
+
+        elif u.faccion == "Helado":
+            # Curación cada 3 turnos
+            if u.turno_hab % 3 == 0:
+                u.vida = min(u.vida + 20, u.vida_max)
+    def _activar_habilidad_torre(self, torre, unidad_objetivo):
+        if torre.faccion == "Esqueleto":
+            # Disparo en área cada 5 turnos: daña a todas las unidades cercanas
+            if torre.turno_hab % 5 == 0:
+                for u in list(self.unidades):
+                    if u.esta_viva():
+                        distancia = abs(u.col - torre.col) + abs(u.fila - torre.fila)
+                        if distancia <= torre.alcance:
+                            u.recibir_daño(torre.daño)
+                            if not u.esta_viva():
+                                self.eliminar_unidad(u)
+
+        elif torre.faccion == "Fantasma":
+            # Ralentiza: congela 1 turno cada 4 turnos
+            if torre.turno_hab % 4 == 0:
+                if unidad_objetivo and unidad_objetivo.esta_viva():
+                    unidad_objetivo.congelada = max(unidad_objetivo.congelada, 1)
+
+        elif torre.faccion == "Helado":
+            # Congela 2 turnos cada 5 turnos
+            if torre.turno_hab % 5 == 0:
+                if unidad_objetivo and unidad_objetivo.esta_viva():
+                    unidad_objetivo.congelada = max(unidad_objetivo.congelada, 2)
     def _buscar_defensa(self, fila, col):
         for d in self.defensas:
             if d.fila == fila and d.col == col and d.esta_en_pie():
@@ -234,6 +310,10 @@ class Ronda:
                 self.canvas.delete(unidad.imagen_id)
             if unidad.barra_id:
                 self.canvas.delete(unidad.barra_id)
+            # Defensor gana dinero por eliminar unidad
+            recompensa = FACCIONES[unidad.faccion][unidad.tipo]["costo"]
+            self.dinero_def_int[0] += recompensa
+            self.dinero_def.set(f"${self.dinero_def_int[0]}")
 
     def _verificar_victoria(self):
         if not self.unidades:
@@ -271,6 +351,41 @@ FUENTE_RONDA  = ("Segoe UI", 13, "bold")
 FUENTE_UNIDAD = ("Segoe UI", 9, "bold") 
 
 #Funciones
+def cargar_jugadores(): #Top de jugadores y guardado de registro
+    if os.path.exists(ARCHIVO_JUGADORES):
+        with open(ARCHIVO_JUGADORES, "r") as f:
+            return json.load(f)
+    return {}
+
+def guardar_jugadores(datos):
+    with open(ARCHIVO_JUGADORES, "w") as f:
+        json.dump(datos, f, indent=4)
+
+def registrar_o_login(nombre, contrasena):
+    """Devuelve True si el login/registro fue exitoso, False si la contraseña es incorrecta."""
+    datos = cargar_jugadores()
+    if nombre in datos:
+        # jugador existe → verificar contraseña
+        if datos[nombre]["contrasena"] != contrasena:
+            return False
+    else:
+        # jugador nuevo → registrar
+        datos[nombre] = {
+            "contrasena": contrasena,
+            "victorias_atacante": 0,
+            "victorias_defensor": 0
+        }
+        guardar_jugadores(datos)
+    return True
+
+def actualizar_victorias(nombre, rol):
+    """rol es 'atacante' o 'defensor'"""
+    datos = cargar_jugadores()
+    if nombre in datos:
+        datos[nombre][f"victorias_{rol}"] += 1
+        guardar_jugadores(datos)
+
+
 _cache_img = {} #Logra Cargar imagenes/redimensionarlas 
 
 def cargar_img(ruta, ancho, alto):
@@ -544,7 +659,7 @@ def abrir_editor_mapa():
                 obj.imagen_id = item_id
                 lista_defensas.append(obj)
                 matriz[f][c] = 1
-        ronda = Ronda(lista_unidades, lista_defensas, canvas, matriz, fila_base, COL_BASE, fin_ronda, TAM)
+        ronda = Ronda(lista_unidades, lista_defensas, canvas, matriz, fila_base, COL_BASE, fin_ronda, TAM, dinero_def_int, dinero_ata_int, dinero_def, dinero_ata)
         print("Unidades:", len(lista_unidades))
         print("Defensas:", len(lista_defensas))
         ronda.iniciar()
@@ -558,10 +673,14 @@ def abrir_editor_mapa():
             messagebox.showinfo("Fin de ronda", "El DEFENSOR gana la ronda")
 
         if victorias_ata.get() == 3:
+            # NUEVO: guardar victoria
+            actualizar_victorias(jugador1["nombre"], "atacante")
             messagebox.showinfo("Fin del juego", f"{jugador1['nombre']} gana la partida")
             editor.destroy()
             return
         elif victorias_def.get() == 3:
+            # NUEVO: guardar victoria
+            actualizar_victorias(jugador2["nombre"], "defensor")
             messagebox.showinfo("Fin del juego", f"{jugador2['nombre']} gana la partida")
             editor.destroy()
             return
@@ -606,11 +725,6 @@ def abrir_editor_mapa():
         fase_actual.set("defensor")
         btn_listo.config(state="normal")
         btn_combate.config(state="disabled")
-
-    #ronda = Ronda(lista_unidades, lista_defensas, canvas, matriz, fila_base, COL_BASE, fin_ronda, TAM)
-    #print("Unidades:", len(lista_unidades))
-    #print("Defensas:", len(lista_defensas))
-    #ronda.iniciar()
 
     btn_listo = tk.Button(frame_botones, text="Defensor listo", command=defensor_listo, bg="#2ecc71", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=12, pady=6, cursor="hand2")
     btn_listo.pack(side="left", padx=10)
@@ -689,6 +803,12 @@ def abrir_jugar():
         if faccion_atacante.get() == faccion_defensor.get():
             messagebox.showerror("ERROR", "Los jugadores no pueden usar la misma facción"); return
 
+        # NUEVO: verificar login/registro
+        if not registrar_o_login(nombre_a.get(), contra_a.get()):
+            messagebox.showerror("ERROR", "Contraseña incorrecta para el atacante"); return
+        if not registrar_o_login(nombre_d.get(), contra_d.get()):
+            messagebox.showerror("ERROR", "Contraseña incorrecta para el defensor"); return
+
         jugador1.update({"nombre": nombre_a.get(), "contraseña": contra_a.get(), "facción": faccion_atacante.get()})
         jugador2.update({"nombre": nombre_d.get(), "contraseña": contra_d.get(), "facción": faccion_defensor.get()})
         ventana_jugar.destroy()
@@ -698,8 +818,44 @@ def abrir_jugar():
 def abrir_top():
     ventana_top = tk.Toplevel(ventana)
     ventana_top.title("Top de Jugadores")
-    ventana_top.geometry("600x400")
-    tk.Label(ventana_top, text="Ranking de Jugadores").pack(pady=20)
+    ventana_top.geometry("600x450")
+    ventana_top.configure(bg=COLOR_FONDO)
+
+    tk.Label(ventana_top, text="TOP DE JUGADORES", bg=COLOR_FONDO,
+             fg=COLOR_BORDE, font=("Segoe UI", 16, "bold")).pack(pady=15)
+
+    datos = cargar_jugadores()
+
+    # Ordenar por victorias atacante y defensor
+    top_atacantes = sorted(datos.items(), key=lambda x: x[1]["victorias_atacante"], reverse=True)[:5]
+    top_defensores = sorted(datos.items(), key=lambda x: x[1]["victorias_defensor"], reverse=True)[:5]
+
+    frame_tablas = tk.Frame(ventana_top, bg=COLOR_FONDO)
+    frame_tablas.pack(fill="both", expand=True, padx=20)
+
+    # --- Tabla Atacantes ---
+    frame_ata = tk.Frame(frame_tablas, bg=COLOR_PANEL)
+    frame_ata.pack(side="left", fill="both", expand=True, padx=10)
+
+    tk.Label(frame_ata, text="⚔ Top Atacantes", bg=COLOR_PANEL,
+             fg=COLOR_DINERO, font=("Segoe UI", 11, "bold")).pack(pady=8)
+
+    for i, (nombre, info) in enumerate(top_atacantes, 1):
+        texto = f"{i}. {nombre}  —  {info['victorias_atacante']} victorias"
+        tk.Label(frame_ata, text=texto, bg=COLOR_PANEL, fg=COLOR_TEXTO,
+                 font=("Segoe UI", 10)).pack(anchor="w", padx=10, pady=3)
+
+    # --- Tabla Defensores ---
+    frame_def = tk.Frame(frame_tablas, bg=COLOR_PANEL)
+    frame_def.pack(side="left", fill="both", expand=True, padx=10)
+
+    tk.Label(frame_def, text="🛡 Top Defensores", bg=COLOR_PANEL,
+             fg=COLOR_DINERO, font=("Segoe UI", 11, "bold")).pack(pady=8)
+
+    for i, (nombre, info) in enumerate(top_defensores, 1):
+        texto = f"{i}. {nombre}  —  {info['victorias_defensor']} victorias"
+        tk.Label(frame_def, text=texto, bg=COLOR_PANEL, fg=COLOR_TEXTO,
+                 font=("Segoe UI", 10)).pack(anchor="w", padx=10, pady=3)
 
 #Ventana Principal 
 ventana = tk.Tk()
