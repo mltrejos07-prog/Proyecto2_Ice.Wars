@@ -18,5 +18,15 @@
         "contrasena": "wars",
         "victorias_atacante": 0,
         "victorias_defensor": 0
+    },
+    "Ice ": {
+        "contrasena": "Ice",
+        "victorias_atacante": 0,
+        "victorias_defensor": 0
+    },
+    "Wars": {
+        "contrasena": "Wars",
+        "victorias_atacante": 0,
+        "victorias_defensor": 1
     }
 }
